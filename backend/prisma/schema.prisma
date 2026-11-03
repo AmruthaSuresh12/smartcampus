@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         String   @default("STUDENT")
+  department   String?
+  year         Int?
+  skills       String?  // Stored as comma-separated
+  bio          String?
+  avatar       String?
+  points       Int      @default(0)
+  
+  // Relations
+  clubMemberships ClubMember[]
+  bookings        Booking[]
+  eventRegistrations EventRegistration[]
+  coordinatedClubs Club[] @relation("FacultyCoordinator")
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  resume Resume?
+}
+
+model Club {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String
+  logo         String?
+  banner       String?
+  socialLinks  String?  // Stored as JSON string
+  
+  // Relations
+  facultyCoordinatorId String?
+  facultyCoordinator   User? @relation("FacultyCoordinator", fields: [facultyCoordinatorId], references: [id])
+  
+  members      ClubMember[]
+  events       Event[]
+  openings     OpenPosition[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ClubMember {
+  id       String @id @default(uuid())
+  userId   String
+  clubId   String
+  role     String @default("MEMBER") // E.g., "President", "Member", "Treasurer"
+  
+  user     User @relation(fields: [userId], references: [id])
+  club     Club @relation(fields: [clubId], references: [id])
+  
+  status   String @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, clubId])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime
+  posters     String?  // Stored as comma-separated
+  
+  venue       String?  @default("TBD")
+  capacity    Int?     @default(100)
+  winners     String?  // Stored as JSON or comma-separated
+  gallery     String?  // Stored as comma-separated
+  
+  clubId      String
+  club        Club     @relation(fields: [clubId], references: [id])
+  
+  registrations EventRegistration[]
+  
+  createdAt   DateTime @default(now())
+}
+
+model EventRegistration {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+  
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+  
+  status    String   @default("CONFIRMED") // CONFIRMED, WAITLISTED
+  qrData    String?
+  attended  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+}
+
+model Auditorium {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  capacity    Int
+  amenities   String?  // Stored as comma-separated
+  images      String?  // Stored as comma-separated
+  
+  bookings    Booking[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Booking {
+  id           String   @id @default(uuid())
+  date         DateTime
+  timeSlot     String   // e.g., "10:00 AM - 12:00 PM"
+  status       String   @default("PENDING")
+  reason       String
+  
+  auditoriumId String
+  auditorium   Auditorium @relation(fields: [auditoriumId], references: [id])
+  
+  userId       String
+  user         User @relation(fields: [userId], references: [id])
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model OpenPosition {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  requirements String?  // Stored as comma-separated
+  
+  clubId      String
+  club        Club     @relation(fields: [clubId], references: [id])
+  
+  createdAt   DateTime @default(now())
+}
+
+// New model for storing parsed resume tech tags
+model Resume {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  techTags  String   // JSON string array of extracted tech keywords
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId])
+}
