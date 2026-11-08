@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllEvents, createEvent, getOpenPositions, registerForEvent, getEventById, generateAnnouncement, getTicket } from '../controllers/eventController.js';
+import { getAllEvents, createEvent, getOpenPositions, registerForEvent, getEventById, generateAnnouncement, getTicket, exportEventRegistrations } from '../controllers/eventController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -10,6 +10,9 @@ router.route('/')
 
 router.route('/positions')
   .get(getOpenPositions);
+
+router.route('/:id/registrations/export')
+  .get(protect, authorize('CLUB_ADMIN'), exportEventRegistrations);
 
 router.route('/:id')
   .get(getEventById);

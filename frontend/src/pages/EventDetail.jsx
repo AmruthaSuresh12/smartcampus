@@ -2,7 +2,7 @@ import { useEffect, useState, useContext } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Users, Award, Sparkles, X, ArrowLeft, Camera, Ticket, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Calendar, MapPin, Users, Award, Sparkles, X, ArrowLeft, Camera, Ticket, CheckCircle2, ShieldCheck, Download } from 'lucide-react';
 import { AuthContext } from '../contexts/AuthContext';
 
 export default function EventDetail() {
@@ -17,6 +17,7 @@ export default function EventDetail() {
   const [showRegForm, setShowRegForm] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [ticketData, setTicketData] = useState(null);
+  const [exportingRegistrations, setExportingRegistrations] = useState(false);
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -81,6 +82,32 @@ export default function EventDetail() {
       setShowAIModal(false);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const downloadRegistrations = async () => {
+    try {
+      setExportingRegistrations(true);
+      const token = localStorage.getItem('campusToken');
+      const res = await axios.get(`http://localhost:5005/api/events/${id}/registrations/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `event-${id}-registrations.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error('Failed to download event registrations', error);
+      alert(error.response?.status === 403
+        ? 'Only club admins can download registration details.'
+        : 'Failed to download registration details.');
+    } finally {
+      setExportingRegistrations(false);
     }
   };
 
@@ -240,6 +267,16 @@ export default function EventDetail() {
                     >
                       Generate Post
                     </button>
+                    {user?.role === 'CLUB_ADMIN' && (
+                      <button
+                        onClick={downloadRegistrations}
+                        disabled={exportingRegistrations}
+                        className="w-full mt-3 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-extrabold py-3 rounded-xl transition-all shadow-md text-sm flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        {exportingRegistrations ? 'Preparing Excel...' : 'Download Registrations (.xlsx)'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -396,9 +433,6 @@ export default function EventDetail() {
     </div>
   );
 }
-
-
-
 
 
 
